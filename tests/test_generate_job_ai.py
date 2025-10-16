@@ -1,23 +1,32 @@
-# tests/test_generate_job_ai.py
 import pytest
 from playwright.sync_api import expect
 import re
+from pages.login_page import LoginPage
 from pages.dashboard_page import DashboardPage
+from configs.config import BASE_URL, USERS, EXPECT_TIMEOUT_job
 
-def test_generate_job_ai(multi_user_contexts):
-    # Get a logged-in page for RECRUITER
-    page = multi_user_contexts["RECRUITER"]["page"]
 
+@pytest.mark.regression
+def test_generate_job_ai(page):
+    # Step 0: Login (get credentials from config)
+    login_page = LoginPage(page)
+    login_page.open_login_page(BASE_URL)
+    login_page.login(USERS["Second_login"]["username"], USERS["Second_login"]["password"])
+
+    # Step 1: Dashboard
     dashboard_page = DashboardPage(page)
     assert dashboard_page.is_dashboard_loaded(), "❌ Dashboard not loaded after login"
 
     # Step 2: Click 'Post New Job'
     dashboard_page.click_post_new_job()
 
-    # Step 1: Generate with AI
+    # Step 3: Generate with AI
     page.get_by_role("button", name="Generate with AI").click()
 
-    # Step 2: Add company
+    # ... rest of your flow remains unchanged ...
+
+
+    # Step 4: Add company
     page.locator("input[placeholder='Search here']").fill("Tailorbird")
     page.get_by_text("Add Company").click()
     expect(page.get_by_role("heading", name="Add Company Details")).to_be_visible(timeout=20000)
@@ -25,8 +34,10 @@ def test_generate_job_ai(multi_user_contexts):
     page.get_by_role("textbox", name="Enter company name").fill("Tailorbird")
     page.get_by_role("textbox", name="Enter company URL").fill("Tailorbird.com")
     page.get_by_role("button", name="Save", exact=True).click()
-
     expect(page.get_by_role("heading", name=re.compile("Tailorbird", re.IGNORECASE))).to_be_visible(timeout=60000)
+
+    # Continue with rest of your steps...
+
 
     # Step 3: Edit location
     page.locator("#field-city").get_by_title("Edit").click()
@@ -38,6 +49,7 @@ def test_generate_job_ai(multi_user_contexts):
     page.locator("#custom-modal button >> nth=0").click()
 
     # Step 5: Search template
+    page.get_by_role("textbox", name="Search template").click()
     page.get_by_role("textbox", name="Search template").fill("software engineer")
     page.get_by_text("Fetch template for").click()
 
@@ -54,5 +66,6 @@ def test_generate_job_ai(multi_user_contexts):
     page.get_by_role("button", name="View Job").click()
 
     # Step 8: Verify
-    expect(page.get_by_text("India", exact=True)).to_be_visible()
-    expect(page.get_by_text(re.compile("Experience.*2.*5", re.IGNORECASE))).to_be_visible()
+    expect(page.get_by_text("India", exact=True)).to_be_visible(timeout=EXPECT_TIMEOUT_job)
+    expect(page.get_by_text(re.compile(r"Experience\s*2\s*[-–]\s*5\s*years", re.IGNORECASE)).first).to_be_visible()
+

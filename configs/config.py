@@ -4,6 +4,7 @@ PASSWORD = "Demo@123"
 
 # Browser / timeout configuration
 DEFAULT_TIMEOUT = 60000
+EXPECT_TIMEOUT_job = 60000
 SLOW_MO = 500
 HEADLESS = False
 

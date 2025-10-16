@@ -3,7 +3,7 @@ import pytest
 import allure
 from datetime import datetime
 from playwright.sync_api import sync_playwright
-
+from playwright.sync_api import expect
 # conftest.py (add this fixture)
 
 import pytest
@@ -139,6 +139,7 @@ def multi_user_contexts(browser):
         page = context.new_page()
         page.set_default_timeout(60000)
         context.set_default_timeout(60000)
+        
 
         login_page = LoginPage(page)
         login_page.open_login_page(BASE_URL)
