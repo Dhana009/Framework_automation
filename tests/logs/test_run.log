@@ -1,0 +1,11 @@
+2025-10-16 22:21:59,832 - [ERROR] - DashboardPage: Dashboard not loaded properly: Locator expected to be visible
+Actual value: <element(s) not found> 
+Call log:
+  - Expect "to_be_visible" with timeout 8000ms
+  - waiting for locator("text=Post New Job")
+    - waiting for" https://test.app.sproutsai.com/" navigation to finish...
+    - navigated to "https://test.app.sproutsai.com/"
+
+2025-10-16 22:25:36,369 - [ERROR] - DashboardPage: DOM sample:
+
+    <div id="main-body" class="main-body w-screen h-screen"><div class="w-screen h-screen p-0 overflow-hidden" id="job_details_page"><div class="flex flex-row w-screen h-screen left-0 relative top-0"><section class="flex h-screen pt-4 pb-1 relative pl-2"><div class="flex flex-row relative left-0 top-0 bottom-0 h-full transition-all duration-200 bg-white shrink-0 overflow-visible" style="width: 66px;"><div class="w-[58px] h-full pl-[4px] pr-[12px]"><img width="42" height="42" class="w-[42px] max

@@ -1,23 +1,33 @@
+# pages/login_page.py
 from pages.base_page import BasePage
+from playwright.sync_api import expect
 
 class LoginPage(BasePage):
     def __init__(self, page):
         super().__init__(page)
-        # Locators
-        self.username_input = 'input[name="username"]'
-        self.password_input = 'input[name="password"]'
-        self.login_button = 'button[type="submit"]'
-        self.error_message = '.error-message'
+        # Verified locators from login page HTML
+        self.email_input = 'input[type="email"]'
+        self.password_input = 'input[type="password"]'
+        self.signin_button = 'button:has-text("Sign in")'
+        self.error_message = '.error-message, div[role="alert"]'
 
-    # Actions
-    def open_login_page(self, base_url):
-        self.goto(f"{base_url}/login")
+    def open_login_page(self, base_url: str):
+        """Navigate to the login page"""
+        # Ensures consistent navigation even if base_url has or lacks /login
+        url = base_url.rstrip('/')
+        if not url.endswith("/login"):
+            url += "/login"
+        self.goto(url)
 
-    def login(self, username, password):
-        self.fill_text(self.username_input, username)
+    def login(self, email: str, password: str):
+        """Perform login action"""
+        self.fill_text(self.email_input, email)
         self.fill_text(self.password_input, password)
-        self.click_element(self.login_button)
+        self.click_element(self.signin_button)
 
-    # Validation
     def get_error_message(self):
-        return self.get_text(self.error_message)
+        """Retrieve the login error message (if visible)"""
+        try:
+            return self.get_text(self.error_message)
+        except Exception:
+            return ""
