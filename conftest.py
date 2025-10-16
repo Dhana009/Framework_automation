@@ -4,6 +4,21 @@ import allure
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
+# conftest.py (add this fixture)
+
+import pytest
+from pages.login_page import LoginPage
+from configs.config import BASE_URL, USERNAME, PASSWORD, USERS
+
+@pytest.fixture(scope="function")
+def logged_in_page(page):
+    """Reusable fixture that logs in before each test and yields an authenticated page."""
+    login_page = LoginPage(page)
+    login_page.open_login_page(BASE_URL)
+    login_page.login(USERNAME, PASSWORD)
+    yield page
+
+
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -43,12 +58,28 @@ def page(browser, request):
     test_name = request.node.name
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    # Close page & context (finalizes video)
+    # Screenshot BEFORE closing page/context
+    if hasattr(request.node, "rep_call") and request.node.rep_call.failed:
+        os.makedirs("screenshots", exist_ok=True)
+        screenshot_path = f"screenshots/{test_name}_{timestamp}.png"
+        page.screenshot(path=screenshot_path, full_page=True)
+        print(f"[Screenshot] Saved: {screenshot_path}")
+
+        if request.config.getoption("--alluredir", None):
+            allure.attach.file(
+                screenshot_path,
+                name=f"{test_name}_failure",
+                attachment_type=allure.attachment_type.PNG
+            )
+
+    # Save video path reference BEFORE closing
+    video_path = page.video.path() if page.video else None
+
+    # Now close page & context (this finalizes the video file)
     page.close()
     context.close()
 
-    video_path = page.video.path() if page.video else None
-
+    # Handle video AFTER closing (file is finalized now)
     if video_mode == "on":
         if video_path and os.path.exists(video_path):
             print(f"[Video] Saved for test {test_name}: {video_path}")
@@ -72,20 +103,6 @@ def page(browser, request):
             if video_path and os.path.exists(video_path):
                 os.remove(video_path)
 
-    # Screenshot on failure
-    if hasattr(request.node, "rep_call") and request.node.rep_call.failed:
-        os.makedirs("screenshots", exist_ok=True)
-        screenshot_path = f"screenshots/{test_name}_{timestamp}.png"
-        page.screenshot(path=screenshot_path, full_page=True)
-        print(f"[Screenshot] Saved: {screenshot_path}")
-
-        if request.config.getoption("--alluredir", None):
-            allure.attach.file(
-                screenshot_path,
-                name=f"{test_name}_failure",
-                attachment_type=allure.attachment_type.PNG
-            )
-
 
 
 @pytest.hookimpl(hookwrapper=True, tryfirst=True)
@@ -104,3 +121,56 @@ def pytest_runtest_makereport(item, call):
 
 # Turn off video recording completely:
 # pytest --video=off
+
+
+@pytest.fixture(scope="session")
+def multi_user_contexts(browser):
+    """
+    Logs in multiple users once per session.
+    Returns a dict: {'RECRUITER': {'context': ctx, 'page': page}, ...}
+    """
+    from pages.login_page import LoginPage
+    from configs.config import USERS, BASE_URL
+
+    user_pages = {}
+
+    for role, creds in USERS.items():
+        context = browser.new_context(record_video_dir="videos/")
+        page = context.new_page()
+        page.set_default_timeout(60000)
+        context.set_default_timeout(60000)
+
+        login_page = LoginPage(page)
+        login_page.open_login_page(BASE_URL)
+        login_page.login(creds["username"], creds["password"])
+
+        user_pages[role] = {"context": context, "page": page}
+        print(f"[LOGIN] ✅ Logged in as {role} ({creds['username']})")
+
+    yield user_pages
+
+    # Teardown
+    for role, items in user_pages.items():
+        try:
+            items["page"].close()
+            items["context"].close()
+            print(f"[LOGOUT] Closed session for {role}")
+        except Exception as e:
+            print(f"[WARNING] Could not close context for {role}: {e}")
+
+
+@pytest.fixture(scope="function")
+def get_user_page(multi_user_contexts):
+    """
+    Access any logged-in user's page.
+    Example:
+        def test_recruiter(get_user_page):
+            page = get_user_page("RECRUITER")
+    """
+    def _get(role: str):
+        role = role.upper()
+        if role not in multi_user_contexts:
+            raise ValueError(f"❌ Invalid role '{role}'. Available: {list(multi_user_contexts.keys())}")
+        return multi_user_contexts[role]["page"]
+
+    return _get
